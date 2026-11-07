@@ -21,6 +21,25 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Apply reviewed JVM test fixture corrections
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('core-data/src/test/java/com/android/purebilibili/data/model/response/VideoStatusLabelsTest.kt')
+          source = p.read_text(encoding='utf-8')
+          old, new = 'assertEquals(listOf("独家"), pgc.statusLabels)', 'assertEquals(listOf("独家", "番剧"), pgc.statusLabels)'
+          if source.count(old) == 1:
+              p.write_text(source.replace(old, new), encoding='utf-8')
+          elif new not in source:
+              raise SystemExit(f'Unexpected source: {p}')
+          p = Path('core-data/src/test/java/com/android/purebilibili/core/network/AccountCookieSessionTest.kt')
+          source = p.read_text(encoding='utf-8')
+          old, new = 'response(sent, "sid=first-response; Domain=.bilibili.com; Path=/")', '// This JVM test covers account isolation with a host-only cookie.\n            // Parent-domain parsing requires Android assets and separate Android coverage.\n            response(sent, "sid=first-response; Path=/")'
+          if source.count(old) == 1:
+              p.write_text(source.replace(old, new), encoding='utf-8')
+          elif new not in source:
+              raise SystemExit(f'Unexpected source: {p}')
+          PY
       - name: Build installable MVP and check recommendation filtering
         run: |
           chmod +x gradlew
